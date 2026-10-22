@@ -9,8 +9,8 @@ const page = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>日時</title>
     <style>
-      :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-      body { min-height: 100vh; margin: 0; display: grid; place-items: center; }
+      :root { color-scheme: light; font-family: system-ui, sans-serif; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: #fff0f5; color: #493640; }
       main { text-align: center; padding: 2rem; }
       h1 { font-size: 1rem; font-weight: 500; opacity: .7; }
       time { font-size: clamp(2rem, 8vw, 5rem); font-variant-numeric: tabular-nums; }
