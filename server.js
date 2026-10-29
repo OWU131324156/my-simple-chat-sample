@@ -1,56 +1,50 @@
-const http = require('node:http');
+const express = require('express');
+const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server);
 
-const port = Number(process.env.PORT) || 3000;
+app.use(express.static('public'));
 
-const page = `<!doctype html>
-<html lang="ja">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>日時</title>
-    <style>
-      :root { color-scheme: light; font-family: system-ui, sans-serif; }
-      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: #fff0f5; color: #493640; }
-      main { text-align: center; padding: 2rem; }
-      h1 { font-size: 1rem; font-weight: 500; opacity: .7; }
-      time { font-size: clamp(2rem, 8vw, 5rem); font-variant-numeric: tabular-nums; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>現在の日時（日本時間）</h1>
-      <time id="datetime" aria-live="off"></time>
-    </main>
-    <script>
-      const formatter = new Intl.DateTimeFormat('ja-JP', {
-        timeZone: 'Asia/Tokyo',
-        year: 'numeric', month: 'long', day: 'numeric',
-        weekday: 'long', hour: '2-digit', minute: '2-digit', second: '2-digit',
-        hourCycle: 'h23'
-      });
-      const output = document.querySelector('#datetime');
-      function updateDateTime() {
-        const now = new Date();
-        output.dateTime = now.toISOString();
-        output.textContent = formatter.format(now);
-      }
-      updateDateTime();
-      setInterval(updateDateTime, 1000);
-    </script>
-  </body>
-</html>`;
+io.on('connection', (socket) => {
+  // Chat functionality (for index.html)
+  socket.on('user connected', (clientId) => {
+    socket.clientId = clientId;
+    console.log(clientId + ' connected');
+    socket.emit('welcome', clientId);
+    socket.broadcast.emit('user joined', clientId);
+  });
 
-const server = http.createServer((request, response) => {
-  if (request.url !== '/') {
-    response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    response.end('Not Found');
-    return;
-  }
+  socket.on('chat message', (msg) => {
+    io.emit('chat message', {
+      ...msg,
+      timestamp: Date.now()
+    });
+  });
+  
+  // Room functionality (for sensor apps)
+  socket.on('join', (room) => {
+    socket.join(room);
+    console.log(`Client joined room: ${room}`);
+  });
+  
+  // Sensor data handling
+  socket.on('sensor', (data) => {
+    // センサーデータを'game'ルームにいる他のクライアントに送信する
+    socket.to('game').emit('sensor', data);
+  });
 
-  response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-  response.end(page);
+  socket.on('disconnect', () => {
+    if (socket.clientId) {
+      console.log(socket.clientId + ' disconnected');
+      io.emit('user left', socket.clientId);
+    } else {
+      console.log('Client disconnected');
+    }
+  });
 });
 
-server.listen(port, '0.0.0.0', () => {
-  console.log(`日時表示を http://localhost:${port} で開けます`);
+server.listen(8080, () => {
+  console.log('listening on *:8080');
 });
